@@ -9,3 +9,9 @@ After unzip the dataset file, there should be a folder called `img_align_celeba`
 
 - Windows users might find the printed stdout annoying; if so, simply delete all print involving `bcolor`. I think that only works under linux.
 
+### The one I search to fix
+<img src="screen-shots/the-one-i-want-it-to.png" width="1000"><br><br><br><br>
+### What simpler model can achieve
+<img src="screen-shots/simple-model-achievement.png" width="1000"><br><br><br><br>
+### What carpedm20's model should achieve
+<img src="screen-shots/what-carpedm20-tf-should-achieve.png" width="1000">
