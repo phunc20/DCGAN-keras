@@ -9,6 +9,7 @@ import glob
 import cv2
 import scipy
 import scipy.misc
+from keras.initializers import TruncatedNormal, RandomNormal
 
 
 
@@ -48,38 +49,45 @@ gen_img = layers.Activation('relu')(gen_img)
 
 # new 1st layer
 first_plane_shape = (4, 4, n_channels_large*8)
-gen_img = layers.Dense(np.prod(first_plane_shape))(z)
+gen_img = layers.Dense(np.prod(first_plane_shape),
+                       kernel_initializer=RandomNormal(stddev=0.02,),
+                       bias_initializer='zeros',)(z)
 gen_img = layers.Reshape(first_plane_shape)(gen_img)
-gen_img = layers.BatchNormalization(axis=-1)(gen_img)
+gen_img = layers.BatchNormalization(axis=-1, momentum=0.9,
+            epsilon=1e-5, scale=True)(gen_img)
 gen_img = layers.Activation('relu')(gen_img)
 
 
 
 # plane shape: (8,8,128*4)
 gen_img = layers.Conv2DTranspose(filters=n_channels_large*4, kernel_size=5,
-                                 strides=2, padding='same')(gen_img)
-gen_img = layers.BatchNormalization(axis=-1)(gen_img)
+                   kernel_initializer=RandomNormal(stddev=0.02,),
+                   strides=2, padding='same')(gen_img)
+gen_img = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(gen_img)
 gen_img = layers.Activation('relu')(gen_img)
 
 
 # plane shape: (16,16,128*2)
 gen_img = layers.Conv2DTranspose(filters=n_channels_large*2, kernel_size=5,
-                                 strides=2, padding='same')(gen_img)
-gen_img = layers.BatchNormalization(axis=-1)(gen_img)
+                   kernel_initializer=RandomNormal(stddev=0.02,),
+                   strides=2, padding='same')(gen_img)
+gen_img = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(gen_img)
 gen_img = layers.Activation('relu')(gen_img)
 
 
 # plane shape: (32,32,128)
 gen_img = layers.Conv2DTranspose(filters=n_channels_large, kernel_size=5,
-                                 strides=2, padding='same')(gen_img)
-gen_img = layers.BatchNormalization(axis=-1)(gen_img)
+                   kernel_initializer=RandomNormal(stddev=0.02,),
+                   strides=2, padding='same')(gen_img)
+gen_img = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(gen_img)
 gen_img = layers.Activation('relu')(gen_img)
 
 
 # plane shape: (64,64,3)
 gen_img = layers.Conv2DTranspose(filters=3, kernel_size=5,
-                                 strides=2, padding='same',
-                                 activation='tanh')(gen_img)
+                   kernel_initializer=RandomNormal(stddev=0.02,),
+                   strides=2, padding='same',
+                   activation='tanh')(gen_img)
 
 generator = Model(z, gen_img)
 generator.summary()
@@ -98,25 +106,29 @@ input_img = layers.Input(shape=(64,64,3))
 
 # plane shape: (32,32,ndf)
 d_output_proba = layers.Conv2D(filters=ndf, kernel_size=5,
-                               strides=2, padding='same')(input_img)
+                   kernel_initializer=TruncatedNormal(stddev=0.02,),
+                   strides=2, padding='same')(input_img)
 d_output_proba = layers.LeakyReLU(alpha=0.2)(d_output_proba)
 
 # plane shape: (16,16,ndf*2)
 d_output_proba = layers.Conv2D(filters=ndf*2, kernel_size=5,
-                               strides=2, padding='same')(d_output_proba)
-d_output_proba = layers.BatchNormalization(axis=-1)(d_output_proba)
+                   kernel_initializer=TruncatedNormal(stddev=0.02,),
+                   strides=2, padding='same')(d_output_proba)
+d_output_proba = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(d_output_proba)
 d_output_proba = layers.LeakyReLU(alpha=0.2)(d_output_proba)
 
 # plane shape: (8,8,ndf*4)
 d_output_proba = layers.Conv2D(filters=ndf*4, kernel_size=5,
-                               strides=2, padding='same')(d_output_proba)
-d_output_proba = layers.BatchNormalization(axis=-1)(d_output_proba)
+                   kernel_initializer=TruncatedNormal(stddev=0.02,),
+                   strides=2, padding='same')(d_output_proba)
+d_output_proba = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(d_output_proba)
 d_output_proba = layers.LeakyReLU(alpha=0.2)(d_output_proba)
 
 # plane shape: (4,4,ndf*8)
 d_output_proba = layers.Conv2D(filters=ndf*8, kernel_size=5,
-                               strides=2, padding='same')(d_output_proba)
-d_output_proba = layers.BatchNormalization(axis=-1)(d_output_proba)
+                   kernel_initializer=TruncatedNormal(stddev=0.02,),
+                   strides=2, padding='same')(d_output_proba)
+d_output_proba = layers.BatchNormalization(axis=-1, momentum=0.9, epsilon=1e-5)(d_output_proba)
 d_output_proba = layers.LeakyReLU(alpha=0.2)(d_output_proba)
 
 """ Canceled and replaced by what follows it.
@@ -129,7 +141,9 @@ d_output_proba = layers.Reshape((1,))(d_output_proba)
 
 # Flatten and Dense to (None, 1) \in [0, 1].
 d_output_proba = layers.Flatten()(d_output_proba)
-d_output_proba = layers.Dense(1, activation='sigmoid')(d_output_proba)
+d_output_proba = layers.Dense(1, activation='sigmoid',
+                       kernel_initializer=RandomNormal(stddev=0.02,),
+                       bias_initializer='zeros',)(d_output_proba)
 
 
 discriminator = Model(input_img, d_output_proba)
@@ -139,6 +153,7 @@ discriminator.summary()
 # ### Compile discriminator
 
 d_optimizer = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+#d_optimizer = keras.optimizers.Adam(lr=2e-7, beta_1=0.5)
 #d_optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.5)
 #d_optimizer = keras.optimizers.RMSprop(lr=0.0008, clipvalue=1.0, decay=1e-8)
 # [clipvalue](https://github.com/keras-team/keras/issues/3414)
@@ -153,6 +168,7 @@ gan_input = keras.Input(shape=(latent_dim,))
 gan_output = discriminator(generator(gan_input))
 gan = Model(gan_input, gan_output)
 gan_optimizer = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+#gan_optimizer = keras.optimizers.Adam(lr=2e-7, beta_1=0.5)
 #gan_optimizer = keras.optimizers.Adam(lr=0.002, beta_1=0.5)
 #gan_optimizer = keras.optimizers.RMSprop(lr=0.0004, clipvalue=1.0, decay=1e-8)
 gan.compile(optimizer=gan_optimizer, loss='binary_crossentropy')
@@ -268,7 +284,7 @@ for epoch in range(n_epochs):
 
 
         # Second: Train gan/generator only
-        #z = np.random.normal(size=(batch_size, latent_dim))
+        z = np.random.normal(size=(batch_size, latent_dim))
         white_lies = np.ones((batch_size, 1))
         a_loss = gan.train_on_batch(z, white_lies)
         # Run gan twice like carpedm20
@@ -280,13 +296,18 @@ for epoch in range(n_epochs):
             #shuffled_indices = np.random.permutation(m)
             break
         step += 1
+        print(bcolors.OKGREEN + bcolors.BOLD, end='')
+        print("step: %s" % (step), end='')
+        print(bcolors.ENDC)
+        print("discriminator loss:", d_loss)
+        print("adversarial loss:", a_loss)
         if step % 200 == 0:
             #gan.save_weights(os.path.join(save_dir, "gan.h5"))
-            print(bcolors.OKGREEN + bcolors.BOLD, end='')
-            print("step: %s" % (step), end='')
-            print(bcolors.ENDC)
-            print("discriminator loss:", d_loss)
-            print("adversarial loss:", a_loss)
+            #print(bcolors.OKGREEN + bcolors.BOLD, end='')
+            #print("step: %s" % (step), end='')
+            #print(bcolors.ENDC)
+            #print("discriminator loss:", d_loss)
+            #print("adversarial loss:", a_loss)
 
             fixed_gen = generator.predict(fixed_z)
             fooled = discriminator.predict(fixed_gen) > 0.5
